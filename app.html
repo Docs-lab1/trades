@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1a237e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>📊 Score Predictor Pro</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+
+    <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
+</head>
+<body>
+
+    <!-- ========================================= -->
+    <!-- MAIN APP -->
+    <!-- ========================================= -->
+
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="app-icon">📊</div>
+            <div>
+                <h1>Score Predictor Pro</h1>
+                <p>Mongu Trades Secondary School</p>
+            </div>
+            <button id="logoutBtn" class="logout-btn">🚪 Logout</button>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="predict"><span class="tab-icon">🔮</span> Predict</button>
+        <button class="tab-btn" data-tab="history"><span class="tab-icon">📋</span> History</button>
+        <button class="tab-btn" data-tab="analytics"><span class="tab-icon">📊</span> Analytics</button>
+        <button class="tab-btn" data-tab="about"><span class="tab-icon">ℹ️</span> About</button>
+    </nav>
+
+    <div class="container">
+
+        <!-- ===== TAB 1: PREDICT ===== -->
+        <section id="tab-predict" class="tab-content active">
+
+            <!-- Input Card -->
+            <div class="card">
+                <h2>✏️ Enter Student Information</h2>
+
+                <div class="form-group">
+                    <label for="studentName">👤 Student Name</label>
+                    <input type="text" id="studentName" placeholder="e.g., John Doe" />
+                </div>
+
+                <div class="form-row three-col">
+                    <div class="form-group">
+                        <label for="hours">📚 Hours Studied</label>
+                        <input type="number" id="hours" placeholder="8" min="0" max="20" step="0.5" />
+                        <small>0 - 20 hours/week</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="absences">🚫 Absences</label>
+                        <input type="number" id="absences" placeholder="1" min="0" max="10" />
+                        <small>0 - 10 absences</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="midterm">📝 Mid-term Score</label>
+                        <input type="number" id="midterm" placeholder="76" min="0" max="100" />
+                        <small>0 - 100%</small>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="predictBtn" class="btn-primary">🔮 Predict Score</button>
+                    <button id="addBatchBtn" class="btn-batch">➕ Add to Batch</button>
+                    <button id="clearBtn" class="btn-secondary">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div class="card result-card" id="resultSection" style="display: none;">
+                <div class="result-header">
+                    <h3>📋 Prediction Result</h3>
+                    <span id="resultDate" class="result-date"></span>
+                </div>
+                <p id="resultStudentName" class="student-name"></p>
+                <div class="score-display">
+                    <div class="score-ring" id="scoreRing">
+                        <span class="score-value" id="resultScore">0</span>
+                        <span class="score-label">Predicted Score</span>
+                    </div>
+                </div>
+                <div class="interpretation" id="resultInterpretation"></div>
+                <div class="mini-chart-container">
+                    <canvas id="miniChart"></canvas>
+                </div>
+                <div class="equation-display">
+                    <small><strong>Equation:</strong> 12.50 + 2.30(Hours) - 1.80(Absences) + 0.75(Mid-term)</small>
+                </div>
+                <button id="saveResultBtn" class="btn-save">💾 Save to Database</button>
+            </div>
+
+            <!-- What-If -->
+            <div class="card whatif-card" id="whatifSection" style="display: none;">
+                <h2>📈 What-If Analysis</h2>
+                <p class="subtitle">See how changing behavior affects the predicted score</p>
+                <div class="whatif-grid" id="whatifGrid"></div>
+            </div>
+
+            <!-- Batch -->
+            <div class="card batch-card" id="batchSection" style="display: none;">
+                <h2>👥 Batch Input</h2>
+                <p class="subtitle">Add multiple students for batch prediction</p>
+                <div class="batch-list" id="batchList">
+                    <p class="empty-message">No students added yet.</p>
+                </div>
+                <div class="batch-actions-row">
+                    <span id="batchCount">0 students</span>
+                    <button onclick="predictBatch()" class="btn-primary">🔮 Predict All</button>
+                    <button onclick="clearBatch()" class="btn-secondary">🗑️ Clear Batch</button>
+                </div>
+            </div>
+
+            <!-- Batch Results -->
+            <div class="card batch-results" id="batchResults" style="display: none;">
+                <div id="batchResultsContainer"></div>
+            </div>
+
+        </section>
+
+        <!-- ===== TAB 2: HISTORY ===== -->
+        <section id="tab-history" class="tab-content">
+            <div class="card">
+                <div class="history-header">
+                    <h2>📋 Prediction History</h2>
+                    <div>
+                        <button id="exportBtn" class="btn-small">📤 Export CSV</button>
+                        <button id="clearHistoryBtn" class="btn-small btn-danger">🗑️ Clear All</button>
+                    </div>
+                </div>
+                <p id="historyCount" class="subtitle">Loading...</p>
+                <div id="historyList" class="history-list">
+                    <p class="empty-message">Loading predictions from database...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== TAB 3: ANALYTICS ===== -->
+        <section id="tab-analytics" class="tab-content">
+            <div class="card">
+                <h2>📊 Analytics Dashboard</h2>
+                <div class="analytics-grid">
+                    <div class="stat-card"><span class="stat-label">Total Predictions</span><span class="stat-value" id="statTotal">0</span></div>
+                    <div class="stat-card"><span class="stat-label">Average Score</span><span class="stat-value" id="statAverage">0%</span></div>
+                    <div class="stat-card"><span class="stat-label">Pass Rate</span><span class="stat-value" id="statPassRate">0%</span></div>
+                    <div class="stat-card"><span class="stat-label">Distinction Rate</span><span class="stat-value" id="statDistinction">0%</span></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📈 Score Distribution</h3>
+                <div class="chart-container"><canvas id="distributionChart"></canvas></div>
+            </div>
+
+            <div class="card">
+                <h3>📈 Trend Over Time</h3>
+                <div class="chart-container"><canvas id="trendChart"></canvas></div>
+            </div>
+
+            <div class="card">
+                <h3>📊 Model Performance</h3>
+                <div class="model-stats">
+                    <div class="model-stat-item"><span>R-Squared</span><span class="stat-highlight">0.953</span><div class="progress-bar"><div class="progress-fill" style="width:95.3%;"></div></div></div>
+                    <div class="model-stat-item"><span>Accuracy</span><span class="stat-highlight">95.3%</span><div class="progress-bar"><div class="progress-fill" style="width:95.3%;"></div></div></div>
+                    <div class="model-stat-item"><span>Avg. Error</span><span class="stat-highlight">±5.85</span><div class="progress-bar"><div class="progress-fill" style="width:85%;"></div></div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== TAB 4: ABOUT ===== -->
+        <section id="tab-about" class="tab-content">
+            <div class="card">
+                <h2>ℹ️ About This Project</h2>
+                <div class="about-content">
+                    <div class="about-icon">📊</div>
+                    <h3>Exam Score Predictor Pro</h3>
+                    <p><strong>Mongu Trades Secondary School</strong> | ICT Department</p>
+                    <div class="about-section">
+                        <h4>🔬 The Model</h4>
+                        <code>Final = 12.50 + 2.30(Hours) - 1.80(Absences) + 0.75(Mid-term)</code>
+                        <ul>
+                            <li>📚 <strong>R-Squared:</strong> 0.953 (95.3% accuracy)</li>
+                            <li>📚 <strong>Training Data:</strong> 15 students</li>
+                            <li>📚 <strong>Average Error:</strong> ±5.85 marks</li>
+                        </ul>
+                    </div>
+                    <div class="about-section">
+                        <h4>🚀 Features</h4>
+                        <ul>
+                            <li>✅ Real-time score prediction</li>
+                            <li>✅ What-If scenario analysis</li>
+                            <li>✅ Batch input for multiple students</li>
+                            <li>✅ Cloud database storage</li>
+                            <li>✅ Analytics dashboard with charts</li>
+                            <li>✅ Mobile app ready (PWA)</li>
+                            <li>✅ Secure login authentication</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-tab="predict"><span class="nav-icon">🔮</span><span class="nav-label">Predict</span></button>
+        <button class="nav-item" data-tab="history"><span class="nav-icon">📋</span><span class="nav-label">History</span><span class="nav-badge" id="historyBadge">0</span></button>
+        <button class="nav-item" data-tab="analytics"><span class="nav-icon">📊</span><span class="nav-label">Analytics</span></button>
+        <button class="nav-item" data-tab="about"><span class="nav-icon">ℹ️</span><span class="nav-label">About</span></button>
+    </nav>
+
+    <script src="app.js"></script>
+</body>
+</html>
